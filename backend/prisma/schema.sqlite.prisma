@@ -1,0 +1,261 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  passwordHash String
+  role         String        @default("CITIZEN") // CITIZEN, ADMIN, FIELD_STAFF
+  name         String
+  phone        String?
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  profile             UserProfile?
+  reports             Report[]                  @relation("CitizenReports")
+  assignedReports     Report[]                  @relation("StaffAssignedReports")
+  statusHistories     ReportStatusHistory[]
+  assignmentHistories ReportAssignmentHistory[]
+  comments            ReportComment[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model UserProfile {
+  id                   String      @id @default(cuid())
+  userId               String      @unique
+  avatarUrl            String?
+  departmentId         String?
+  notificationsEnabled Boolean     @default(true)
+  emailNotifications   Boolean     @default(true)
+  user                 User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department           Department? @relation(fields: [departmentId], references: [id])
+}
+
+model Department {
+  id           String                   @id @default(cuid())
+  name         String                   @unique
+  code         String                   @unique
+  description  String?
+  contactEmail String?
+  slaHours     Int                      @default(48)
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+
+  profiles     UserProfile[]
+  reports      Report[]
+  slas         ServiceLevelAgreement[]
+}
+
+model Report {
+  id                   String                   @id @default(cuid())
+  ticketNumber         String                   @unique
+  citizenId            String
+  title                String
+  description          String
+  category             String                   // POTHOLE, BROKEN_STREETLIGHT, GARBAGE_ACCUMULATION, etc.
+  severity             String                   @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  priorityScore        Float                    @default(0)
+  priorityLevel        String                   @default("LOW") // LOW, MEDIUM, HIGH, CRITICAL
+  latitude             Float
+  longitude            Float
+  address              String?
+  landmark             String?
+  status               String                   @default("REPORTED") // REPORTED, VERIFIED, ASSIGNED, IN_PROGRESS, RESOLVED, REJECTED, DUPLICATE
+  assignedDepartmentId String?
+  assignedStaffId      String?
+  duplicateOfId        String?
+  resolutionNotes      String?
+  resolutionDate       DateTime?
+  resolutionPhotoUrl   String?
+  confirmedByCitizen   Boolean?
+  confirmedAt          DateTime?
+  confirmationNotes    String?
+  verifiedAt           DateTime?
+  verifiedById         String?
+  rejectionReason      String?
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+
+  citizen              User                     @relation("CitizenReports", fields: [citizenId], references: [id])
+  assignedDepartment   Department?              @relation(fields: [assignedDepartmentId], references: [id])
+  assignedStaff        User?                    @relation("StaffAssignedReports", fields: [assignedStaffId], references: [id])
+  duplicateOf          Report?                  @relation("DuplicateReports", fields: [duplicateOfId], references: [id])
+  duplicates           Report[]                 @relation("DuplicateReports")
+  images               ReportImage[]
+  aiAnalysis           AIAnalysis?
+  statusHistory        ReportStatusHistory[]
+  assignmentHistory    ReportAssignmentHistory[]
+  comments             ReportComment[]
+  duplicateMatches     DuplicateMatch[]         @relation("ReportMatches")
+  targetMatches        DuplicateMatch[]         @relation("TargetMatches")
+
+  @@index([status])
+  @@index([category])
+  @@index([priorityLevel])
+  @@index([citizenId])
+  @@index([assignedDepartmentId])
+  @@index([assignedStaffId])
+}
+
+model ReportImage {
+  id                   String   @id @default(cuid())
+  reportId             String
+  url                  String
+  publicId             String?
+  isPrimary            Boolean  @default(true)
+  isResolutionEvidence Boolean  @default(false)
+  fileSize             Int?
+  mimeType             String?
+  uploadedAt           DateTime @default(now())
+
+  report               Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+}
+
+model AIAnalysis {
+  id                   String   @id @default(cuid())
+  reportId             String   @unique
+  rawResponse          String?
+  detectedCategory     String
+  estimatedSeverity    String
+  confidence           Float
+  generatedDescription String
+  recommendedAction    String
+  priorityScore        Float
+  needsHumanReview     Boolean  @default(false)
+  modelVersion         String   @default("1.0.0")
+  analyzedAt           DateTime @default(now())
+
+  report               Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+}
+
+model ReportStatusHistory {
+  id          String   @id @default(cuid())
+  reportId    String
+  fromStatus  String
+  toStatus    String
+  changedById String?
+  comment     String?
+  createdAt   DateTime @default(now())
+
+  report      Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  changedBy   User?    @relation(fields: [changedById], references: [id])
+
+  @@index([reportId])
+}
+
+model ReportAssignmentHistory {
+  id             String   @id @default(cuid())
+  reportId       String
+  previousStaffId String?
+  newStaffId     String?
+  previousDeptId String?
+  newDeptId      String?
+  changedById    String?
+  reason         String?
+  createdAt      DateTime @default(now())
+
+  report         Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  changedBy      User?    @relation(fields: [changedById], references: [id])
+
+  @@index([reportId])
+}
+
+model ReportComment {
+  id         String   @id @default(cuid())
+  reportId   String
+  authorId   String
+  content    String
+  isInternal Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  report     Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  author     User     @relation(fields: [authorId], references: [id])
+
+  @@index([reportId])
+}
+
+model DuplicateGroup {
+  id                String   @id @default(cuid())
+  canonicalReportId String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model DuplicateMatch {
+  id              String    @id @default(cuid())
+  reportId        String
+  targetReportId  String
+  similarityScore Float
+  distanceMeters  Float
+  matchReason     String
+  status          String    @default("PENDING") // PENDING, CONFIRMED, DISMISSED
+  reviewedById    String?
+  reviewedAt      DateTime?
+  createdAt       DateTime  @default(now())
+
+  report          Report    @relation("ReportMatches", fields: [reportId], references: [id], onDelete: Cascade)
+  targetReport    Report    @relation("TargetMatches", fields: [targetReportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([targetReportId])
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  message     String
+  type        String   // STATUS_CHANGE, ASSIGNMENT, DUPLICATE_ALERT, COMMENT, SYSTEM
+  referenceId String?
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  details   String?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entity, entityId])
+}
+
+model ServiceLevelAgreement {
+  id           String     @id @default(cuid())
+  departmentId String
+  category     String
+  severity     String
+  targetHours  Int
+  createdAt    DateTime   @default(now())
+
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@unique([departmentId, category, severity])
+}

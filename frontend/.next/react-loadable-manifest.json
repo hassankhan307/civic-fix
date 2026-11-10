@@ -1,0 +1,32 @@
+{
+  "app\\admin\\reports\\page.tsx -> ../../../components/MapComponent": {
+    "id": "app\\admin\\reports\\page.tsx -> ../../../components/MapComponent",
+    "files": [
+      "static/chunks/_app-pages-browser_src_components_MapComponent_tsx.js"
+    ]
+  },
+  "app\\map\\page.tsx -> ../../components/MapComponent": {
+    "id": "app\\map\\page.tsx -> ../../components/MapComponent",
+    "files": [
+      "static/chunks/_app-pages-browser_src_components_MapComponent_tsx.js"
+    ]
+  },
+  "app\\page.tsx -> ../components/MapComponent": {
+    "id": "app\\page.tsx -> ../components/MapComponent",
+    "files": [
+      "static/chunks/_app-pages-browser_src_components_MapComponent_tsx.js"
+    ]
+  },
+  "app\\report\\page.tsx -> ../../components/MapComponent": {
+    "id": "app\\report\\page.tsx -> ../../components/MapComponent",
+    "files": [
+      "static/chunks/_app-pages-browser_src_components_MapComponent_tsx.js"
+    ]
+  },
+  "components\\MapComponent.tsx -> leaflet": {
+    "id": "components\\MapComponent.tsx -> leaflet",
+    "files": [
+      "static/chunks/_app-pages-browser_node_modules_leaflet_dist_leaflet-src_js.js"
+    ]
+  }
+}
